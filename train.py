@@ -5,18 +5,16 @@ import joblib as joblib
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import torchvision
 from torchvision import datasets, models, transforms
-import matplotlib.pyplot as plt
 import time
 import os
 import copy
 
 
-def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25, is_inception=False):
+def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25):
     since = time.time()
 
+    train_acc_history = []
     val_acc_history = []
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -48,18 +46,8 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25,
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
                     # Get model outputs and calculate loss
-                    # Special case for inception because in training it has an auxiliary output. In train
-                    #   mode we calculate the loss by summing the final output and the auxiliary output
-                    #   but in testing we only consider the final output.
-                    if is_inception and phase == 'train':
-                        # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
-                        outputs, aux_outputs = model(inputs)
-                        loss1 = criterion(outputs, labels)
-                        loss2 = criterion(aux_outputs, labels)
-                        loss = loss1 + 0.4*loss2
-                    else:
-                        outputs = model(inputs)
-                        loss = criterion(outputs, labels)
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
 
                     _, preds = torch.max(outputs, 1)
 
@@ -82,7 +70,9 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25,
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
             if phase == 'val':
-                val_acc_history.append(epoch_acc)
+                val_acc_history.append(epoch_acc.cpu().detach().item())
+            else:
+                train_acc_history.append(epoch_acc.cpu().detach().item())
 
         print()
 
@@ -92,19 +82,28 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25,
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-    return model, val_acc_history
+    return model, train_acc_history, val_acc_history
 
 
-def initialize_model(model_name, num_classes, feature_extract, use_pretrained=True):
+def initialize_model(model_name, num_classes, use_pretrained=True):
     # Initialize these variables which will be set in this if statement. Each of these
     #   variables is model specific.
     model_ft = None
     input_size = 0
 
-    if model_name == "resnet":
+    if model_name == "resnet18":
         """ Resnet18
         """
         model_ft = models.resnet18(pretrained=use_pretrained)
+        # set_parameter_requires_grad(model_ft, feature_extract)
+        num_ftrs = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(num_ftrs, num_classes)
+        input_size = 224
+
+    elif model_name == "resnet34":
+        """ Resnet18
+        """
+        model_ft = models.resnet34(pretrained=use_pretrained)
         # set_parameter_requires_grad(model_ft, feature_extract)
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
@@ -138,36 +137,29 @@ def initialize_model(model_name, num_classes, feature_extract, use_pretrained=Tr
 
 
 if __name__ == '__main__':
-    # data_dir = "./data/gender"
+    data_dir = "./data/gender"
     # data_dir = "./data/ethnicity"
-    # data_dir = "./data/small"
-    data_dir = "./data/identity"
+    # data_dir = "./data/identity"
 
     # Number of classes in the dataset
     num_classes = len(os.listdir(f'{data_dir}/test'))
 
-    # Models to choose from [resnet, alexnet, vgg, squeezenet, densenet, inception]
-    model_name = "resnet"
-
+    # Models to choose from [resnet18, resnet34, densenet121, densenet169]  --> densenet max 6/8 batch --> bad results
+    model_name = "resnet34"
 
     # Batch size for training (change depending on how much memory you have)
-    batch_size = 30
+    batch_size = 20
 
     # Number of epochs to train for
     num_epochs = 50
 
-    # Flag for feature extracting. When False, we finetune the whole model,
-    #   when True we only update the reshaped layer params
-    feature_extract = False
-
     # Initialize the model for this run
-    model_ft, input_size = initialize_model(model_name, num_classes, feature_extract, use_pretrained=True)
+    model_ft, input_size = initialize_model(model_name, num_classes, use_pretrained=True)
 
     # Print the model we just instantiated
     # print(model_ft)
 
-    # Data augmentation and normalization for training
-    # Just normalization for validation
+    # Resizing and normalizing data
     data_transforms = {
         'train': transforms.Compose([
             transforms.Resize((input_size, input_size)),
@@ -197,28 +189,19 @@ if __name__ == '__main__':
     model_ft = model_ft.to(device)
 
     params_to_update = model_ft.parameters()
-    # print("Params to learn:")
-    # if feature_extract:
-    #     params_to_update = []
-    #     for name, param in model_ft.named_parameters():
-    #         if param.requires_grad == True:
-    #             params_to_update.append(param)
-    #             print("\t", name)
-    # else:
-    #     for name, param in model_ft.named_parameters():
-    #         if param.requires_grad == True:
-    #             print("\t", name)
 
-    # Observe that all parameters are being optimized
+    learning_rate = 0.001
     # optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
-    optimizer_ft = optim.Adam(params_to_update, lr=0.001)
+    optimizer_ft = optim.Adam(params_to_update, lr=learning_rate)
 
     # Setup the loss fxn
     criterion = nn.CrossEntropyLoss()
 
     # Train and evaluate
-    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, device, num_epochs=num_epochs,
-                                 is_inception=(model_name == "inception"))
+    model_ft, train_hist, val_hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, device,
+                                                 num_epochs=num_epochs)
 
-    torch.save(model_ft.state_dict(), f"{model_name}_d_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}.pth")
-    joblib.dump(hist, f"{model_name}_d_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}.joblib")
+    # 01 = 0.01, l4 = 0.0001
+    torch.save(model_ft.state_dict(), f"{model_name}_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}.pth")
+
+    joblib.dump([train_hist, val_hist], f"hist_{model_name}_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}.joblib")
