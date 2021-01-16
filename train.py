@@ -137,8 +137,9 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
 
 
 if __name__ == '__main__':
-    data_dir = "./data/gender"
-    # data_dir = "./data/ethnicity"
+
+    # data_dir = "./data/gender"
+    data_dir = "./data/ethnicity"
     # data_dir = "./data/identity"
 
     # Number of classes in the dataset
@@ -190,7 +191,7 @@ if __name__ == '__main__':
 
     params_to_update = model_ft.parameters()
 
-    learning_rate = 0.001
+    learning_rate = 0.00001
     # optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
     optimizer_ft = optim.Adam(params_to_update, lr=learning_rate)
 
@@ -202,6 +203,6 @@ if __name__ == '__main__':
                                                  num_epochs=num_epochs)
 
     # 01 = 0.01, l4 = 0.0001
-    torch.save(model_ft.state_dict(), f"{model_name}_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}.pth")
+    torch.save(model_ft.state_dict(), f"{model_name}_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}_l5.pth")
 
-    joblib.dump([train_hist, val_hist], f"hist_{model_name}_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}.joblib")
+    joblib.dump([train_hist, val_hist], f"hist_{model_name}_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}_l5.joblib")
