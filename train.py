@@ -86,8 +86,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
 
 
 def initialize_model(model_name, num_classes, use_pretrained=True):
-    # Initialize these variables which will be set in this if statement. Each of these
-    #   variables is model specific.
     model_ft = None
     input_size = 0
 
@@ -95,7 +93,6 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
         """ Resnet18
         """
         model_ft = models.resnet18(pretrained=use_pretrained)
-        # set_parameter_requires_grad(model_ft, feature_extract)
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         input_size = 224
@@ -104,7 +101,6 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
         """ Resnet18
         """
         model_ft = models.resnet34(pretrained=use_pretrained)
-        # set_parameter_requires_grad(model_ft, feature_extract)
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         input_size = 224
@@ -113,7 +109,6 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
         """ Densenet169
         """
         model_ft = models.densenet169(pretrained=use_pretrained)
-        # set_parameter_requires_grad(model_ft, feature_extract)
         num_ftrs = model_ft.classifier.in_features
         model_ft.classifier = nn.Linear(num_ftrs, num_classes)
         input_size = 224
@@ -122,7 +117,6 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
         """ Densenet121
         """
         model_ft = models.densenet121(pretrained=use_pretrained)
-        # set_parameter_requires_grad(model_ft, feature_extract)
         num_ftrs = model_ft.classifier.in_features
         model_ft.classifier = nn.Linear(num_ftrs, num_classes)
         input_size = 224
@@ -134,10 +128,9 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
     return model_ft, input_size
 
 
-
-
 if __name__ == '__main__':
 
+    # Data directory on which you want to train the model
     # data_dir = "./data/gender"
     data_dir = "./data/ethnicity"
     # data_dir = "./data/identity"
@@ -151,14 +144,11 @@ if __name__ == '__main__':
     # Batch size for training (change depending on how much memory you have)
     batch_size = 20
 
-    # Number of epochs to train for
+    # Number of epochs to train for  -> can leave this on 50 - the model with best validation accuracy will be saved.
     num_epochs = 50
 
     # Initialize the model for this run
     model_ft, input_size = initialize_model(model_name, num_classes, use_pretrained=True)
-
-    # Print the model we just instantiated
-    # print(model_ft)
 
     # Resizing and normalizing data
     data_transforms = {
@@ -191,8 +181,8 @@ if __name__ == '__main__':
 
     params_to_update = model_ft.parameters()
 
-    learning_rate = 0.00001
-    # optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
+    # you can change learning rate here
+    learning_rate = 0.001
     optimizer_ft = optim.Adam(params_to_update, lr=learning_rate)
 
     # Setup the loss fxn
@@ -203,6 +193,6 @@ if __name__ == '__main__':
                                                  num_epochs=num_epochs)
 
     # 01 = 0.01, l4 = 0.0001
-    torch.save(model_ft.state_dict(), f"{model_name}_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}_l5.pth")
+    torch.save(model_ft.state_dict(), f"{model_name}_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}.pth")
 
-    joblib.dump([train_hist, val_hist], f"hist_{model_name}_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}_l5.joblib")
+    joblib.dump([train_hist, val_hist], f"hist_{model_name}_{data_dir[7:9]}_e_{num_epochs}_b_{batch_size}.joblib")

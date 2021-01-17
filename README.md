@@ -2,7 +2,7 @@
 ## Ear recognition using convolutional neural networks
 
 To use the code in this repository first make a conda envoronment using `environment.yml` file.
-Then prepare the data from *AWE* dataset with script `data_prepare.py`.
+Then prepare the data from *AWE* dataset (you should download it beforehand) with script `data_prepare.py`.
 CNN training is implemented in script `train.py`, the best models are in folder `best models`.
 You can test them using script `test.py`.
 

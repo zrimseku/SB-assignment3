@@ -8,6 +8,7 @@ df = pd.read_csv('awe/test.txt', delimiter=' ', header=None)
 test_idx = df.values[0]
 val_idx = df.values[1]
 
+# select the folder you want to prepare
 # folder = '/identity'
 folder = '/ethnicity'
 # folder = '/gender'
